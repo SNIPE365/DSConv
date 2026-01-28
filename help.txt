@@ -1,15 +1,30 @@
-Command line input gets written to file:
-echo DSConv.exe in.c > CLIn.txt
-Data goes into the file (but the file data gets overwritten each time):
-DSConv.exe in.c > out.txt
-Data goes into the file (but the file data gets appended to each time):
-DSConv.exe in.c >> out.txt
-Data + Errors are added to the end of the file (doesn't wipe old data + errors):
-DSConv.exe in.c >> out.txt 2>&1
+DSConv - C Data Structure Converter
+Usage: DSConv.exe [options] <input_file>
+       DSConv.exe -i "structure" [options]
 
-Errors go into the file. Data shows in the console:
-DSConv.exe in.c 2> errors.txt	
-Errors go into the file. Data is hidden (silent):
-DSConv.exe -s in.c 2> errors.txt	
-Errors are added to the end of the file (doesn't wipe old errors):
-DSConv.exe in.c 2>> errors.txt	
+OPTIONS:
+  -i "code"   Interactive Mode. Parses C-style structures directly from
+              the command line string. Wrap in " " for multiple structures.
+              Example: -i "int x[2]={1,2}; int y[2]={3,4};"
+
+  -o <file>   Output Logging. Appends all results to the specified text file
+              while still displaying them to the console.
+              Example: -o logs.txt
+
+  -s          Silent Mode. Suppresses console/file output. Useful for
+              verifying syntax without generating logs.
+
+EXAMPLES:
+  1. Inspect a file:
+     DSConv.exe data.c
+
+  2. Interactive mode with logging:
+     DSConv.exe -i "int values[3] = {001, 02, 3};" -o results.txt
+
+  3. Multiple structures in one go:
+     DSConv.exe -i "int a[1]={5}; int b[1]={10};"
+
+NOTES:
+  * Semicolons (;) are required after every structure declaration.
+  * Leading zeros (padding) in integers are preserved in the output.
+  * Uninitialized elements are marked as {uninit}.

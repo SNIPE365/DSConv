@@ -1,0 +1,14 @@
+- allow more data types , including ones that contain spaces such as long long, and static unsigned long long int
+- make the real interactive mode flag (-ii) which lets the user type multi line C code without needing to only input data structures and use "" for more than one.
+- make it actually convert arrays to structs
+- make it work with multi line formatted data structures as well as the \ operator rather than code packed onto a single line.
+- make the input data structures also support structs, and output arrays, so far the utility only prints information about the data stucture
+- make the tool have formatting options for different C coding styles
+- maybe allow inputting and outputting unions, by faking a union somehow.
+- allow more complex declarations and initializations like multi directional arrays
+- allow even more crazy  declarations and initializations like anonymous arrays, and address literals, compound literals, designated initializers , .. operator, 
+  address literals, and GNU statement expressions.
+- allow switches to convert the Nth input data structure into a specified data structure. 
+- also allow selecting certain data structures but not numerically, but by inputting the data structure name.
+- test other architectures to ensure that the right arch name is being printed, but also test to make sure the short long and long long modifiers are printing the
+  correct sizes and ranges respective of architectre.
