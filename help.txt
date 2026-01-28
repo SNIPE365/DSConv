@@ -1,0 +1,15 @@
+Command line input gets written to file:
+echo DSConv.exe in.c > CLIn.txt
+Data goes into the file (but the file data gets overwritten each time):
+DSConv.exe in.c > out.txt
+Data goes into the file (but the file data gets appended to each time):
+DSConv.exe in.c >> out.txt
+Data + Errors are added to the end of the file (doesn't wipe old data + errors):
+DSConv.exe in.c >> out.txt 2>&1
+
+Errors go into the file. Data shows in the console:
+DSConv.exe in.c 2> errors.txt	
+Errors go into the file. Data is hidden (silent):
+DSConv.exe -s in.c 2> errors.txt	
+Errors are added to the end of the file (doesn't wipe old errors):
+DSConv.exe in.c 2>> errors.txt	
