@@ -1,0 +1,9 @@
+type: int (Spec: 4B, Arch: 4B)
+min:  -2147483648
+max:  2147483647
+range: 2^32
+name: a
+size: 3
+init: 3
+values:
+1, 2, 3
