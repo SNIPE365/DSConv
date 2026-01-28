@@ -1,30 +1,49 @@
 DSConv - C Data Structure Converter
-Usage: DSConv.exe [options] <input_file>
-       DSConv.exe -i "structure" [options]
+Usage: DSConv.exe [flags] target[:filter] [target[:filter] ...]
 
-OPTIONS:
-  -i "code"   Interactive Mode. Parses C-style structures directly from
-              the command line string. Wrap in " " for multiple structures.
-              Example: -i "int x[2]={1,2}; int y[2]={3,4};"
+TARGETS:
+  A target can be a filename or a raw C-style string.
+  Strings must be wrapped in double quotes (" ").
+  
+  <file.c>          Processes all structures found in the file.
+  "int x[2]={0};"   Processes the provided code string.
 
-  -o <file>   Output Logging. Appends all results to the specified text file
-              while still displaying them to the console.
-              Example: -o logs.txt
+FILTERS:
+  Filters are appended to targets to select specific data structures.
+  
+  :index            Selects the Nth structure in that source (1-based).
+                    Example: data.c:2 (Gets the second struct in the file).
+  ::identifier      Selects a structure by its variable name.
+                    Example: "int x[1]={1};"::x
 
-  -s          Silent Mode. Suppresses console/file output. Useful for
-              verifying syntax without generating logs.
+FLAGS:
+  -p [file.txt]     Print-to-file. Logs console output to a file.
+                    If no filename is provided for a file target, it 
+                    defaults to <filename>.txt.
+                    Example: DSConv.exe main.c -p (Creates main.txt)
 
-EXAMPLES:
-  1. Inspect a file:
-     DSConv.exe data.c
+  -s                Silent Mode. Suppresses all console output. 
+                    Best used with -p to generate logs in the background.
 
-  2. Interactive mode with logging:
-     DSConv.exe -i "int values[3] = {001, 02, 3};" -o results.txt
+COMBINATIONS & EXAMPLES:
 
-  3. Multiple structures in one go:
-     DSConv.exe -i "int a[1]={5}; int b[1]={10};"
+  1. Multiple Files (Whole):
+     DSConv.exe file1.c file2.c
+
+  2. Mixed File and String with Index:
+     DSConv.exe source.c:1 "int x[3]={1,2,3};":1
+
+  3. Identifier Selection with Logging:
+     DSConv.exe data.c::PlayerStats -p results.txt
+
+  4. Silent Auto-Logging:
+     DSConv.exe script.c -s -p
+     (Writes data from script.c to script.txt with no console output)
+
+  5. Complex Multi-Source:
+     DSConv.exe fileA.c:2 "int x[2]={1,2}; int y[2]={3,4};"::y fileB.c
 
 NOTES:
-  * Semicolons (;) are required after every structure declaration.
-  * Leading zeros (padding) in integers are preserved in the output.
-  * Uninitialized elements are marked as {uninit}.
+  * Semicolons (;) are required at the end of every C structure.
+  * Logic detects strings vs files by looking for '{', '[', or ';'.
+  * All leading zeros in integers are preserved in output and logs.

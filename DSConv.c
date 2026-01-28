@@ -3,28 +3,27 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
-#include <stdarg.h> // Added this to fix the compiler errors
+#include <stdarg.h>
 
 #define MAX_VALUES 1000
 #define MAX_NAME   64
 #define MAX_TYPE   32
 #define MAX_VAL_STR 32
+#define MAX_BUFFER 16384
 
-FILE *out_file = NULL;
+FILE *log_file = NULL;
+int silent = 0;
 
-/* Helper to print to both console and file */
 void dual_print(const char *format, ...) {
     va_list args;
-    
-    // Print to console
-    va_start(args, format);
-    vprintf(format, args);
-    va_end(args);
-
-    // Print to file if -o was used
-    if (out_file) {
+    if (!silent) {
         va_start(args, format);
-        vfprintf(out_file, format, args);
+        vprintf(format, args);
+        va_end(args);
+    }
+    if (log_file) {
+        va_start(args, format);
+        vfprintf(log_file, format, args);
         va_end(args);
     }
 }
@@ -42,83 +41,53 @@ const char* get_arch() {
 }
 
 static char *skip_ws(char *p) {
-    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
-        p++;
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
     return p;
 }
 
-int main(int argc, char **argv) {
-    char line[4096] = {0}; 
-    char type[MAX_TYPE];
-    char name[MAX_NAME];
-    char values[MAX_VALUES][MAX_VAL_STR]; 
-    char *p;
-    
-    int silent = 0;
-    int inline_mode = 0;
-    char *input_arg = NULL;
+void process_source(char *raw_input, char *filter, int filter_type) {
+    char source_content[MAX_BUFFER] = {0};
+    int is_file = 1;
 
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s [-s] [-i \"str\"] [-o out.txt] <file>\n", argv[0]);
-        return 1;
-    }
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-s") == 0) {
-            silent = 1;
-        } else if (strcmp(argv[i], "-i") == 0) {
-            inline_mode = 1;
-            if (i + 1 < argc) input_arg = argv[++i];
-        } else if (strcmp(argv[i], "-o") == 0) {
-            if (i + 1 < argc) {
-                out_file = fopen(argv[++i], "a"); 
-            }
-        } else {
-            input_arg = argv[i];
-        }
-    }
-
-    if (!input_arg) {
-        fprintf(stderr, "error: no input specified\n");
-        return 1;
-    }
-
-    if (inline_mode) {
-        strncpy(line, input_arg, sizeof(line) - 1);
+    // Detect if input is a string of code or a filename
+    if (strchr(raw_input, '{') || strchr(raw_input, '[') || strchr(raw_input, ';')) {
+        is_file = 0;
+        strncpy(source_content, raw_input, MAX_BUFFER - 1);
     } else {
-        FILE *f = fopen(input_arg, "rb");
-        if (!f) { perror("fopen"); return 1; }
-        fread(line, 1, sizeof(line) - 1, f);
+        FILE *f = fopen(raw_input, "rb");
+        if (!f) { fprintf(stderr, "error: could not open %s\n", raw_input); return; }
+        fread(source_content, 1, MAX_BUFFER - 1, f);
         fclose(f);
     }
 
-    p = line;
+    char *p = source_content;
+    int current_index = 1;
+    int target_index = (filter_type == 1) ? atoi(filter) : -1;
 
     while (*(p = skip_ws(p)) != '\0') {
         char *struct_start = p;
+        char type[MAX_TYPE], name[MAX_NAME], values[MAX_VALUES][MAX_VAL_STR];
         int size = 0, value_count = 0;
 
-        /* parse type */
+        // Parsing
         int ti = 0;
         while (isalpha(*p)) { if (ti < MAX_TYPE - 1) type[ti++] = *p; p++; }
         type[ti] = 0;
-
         p = skip_ws(p);
 
-        /* parse name */
         int ni = 0;
         while (isalnum(*p) || *p == '_') { if (ni < MAX_NAME - 1) name[ni++] = *p; p++; }
         name[ni] = 0;
-
         p = skip_ws(p);
-        if (*p++ != '[') { fprintf(stderr, "error: expected '['\n"); return 1; }
+
+        if (*p++ != '[') { while(*p && *p != ';') p++; p++; continue; }
         while (isdigit(*p)) { size = size * 10 + (*p - '0'); p++; }
-        if (*p++ != ']') { fprintf(stderr, "error: expected ']'\n"); return 1; }
+        if (*p++ != ']') { while(*p && *p != ';') p++; p++; continue; }
 
         p = skip_ws(p);
-        if (*p++ != '=') { fprintf(stderr, "error: expected '='\n"); return 1; }
+        if (*p++ != '=') { while(*p && *p != ';') p++; p++; continue; }
         p = skip_ws(p);
-        if (*p++ != '{') { fprintf(stderr, "error: expected '{'\n"); return 1; }
+        if (*p++ != '{') { while(*p && *p != ';') p++; p++; continue; }
 
         while (1) {
             p = skip_ws(p);
@@ -134,18 +103,22 @@ int main(int argc, char **argv) {
         }
         if (*p == '}') p++;
         p = skip_ws(p);
-        if (*p != ';') { fprintf(stderr, "error: expected ';' after %s\n", name); return 1; }
-        char *struct_end = p;
-        p++;
+        char *struct_end = (*p == ';') ? p : p-1;
+        if (*p == ';') p++;
 
-        /* success block */
-        if (!silent) {
+        // Filter Check
+        int match = 0;
+        if (filter_type == 0) match = 1; // No filter, match all
+        else if (filter_type == 1 && current_index == target_index) match = 1; // Index match
+        else if (filter_type == 2 && strcmp(name, filter) == 0) match = 1; // Name match
+
+        if (match) {
             dual_print("%.*s\n", (int)(struct_end - struct_start + 1), struct_start);
             dual_print("type: %s\nname: %s\n", type, name);
             if (strcmp(type, "int") == 0) {
                 dual_print("arch: %s\nactual size: %zu bytes\n", get_arch(), sizeof(int));
                 dual_print("min value: %d\nmax value: %d\n", INT_MIN, INT_MAX);
-                dual_print("data range: 4294967296\ntheoretical size: 4 bytes\n");
+                dual_print("theoretical size: 4 bytes\n");
             }
             dual_print("no. of elements %d\nvalues: ", size);
             for (int i = 0; i < size; i++) {
@@ -153,10 +126,81 @@ int main(int argc, char **argv) {
                 else dual_print("{uninit}");
                 if (i < size - 1) dual_print(", ");
             }
-            dual_print("\n\n"); 
+            dual_print("\n");
+            if (value_count > size) {
+                dual_print("excess values: ");
+                for (int i = size; i < value_count; i++) {
+                    dual_print("%s", values[i]);
+                    if (i < value_count - 1) dual_print(", ");
+                }
+                dual_print("\n");
+            }
+            dual_print("\n");
+        }
+        current_index++;
+    }
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s [flags] source[:index|::name] ...\n", argv[0]);
+        return 1;
+    }
+
+    char *log_filename = NULL;
+    int log_flag_idx = -1;
+
+    // First pass: find global flags
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-s") == 0) silent = 1;
+        else if (strcmp(argv[i], "-p") == 0) {
+            log_flag_idx = i;
+            if (i + 1 < argc && argv[i+1][0] != '-') log_filename = argv[++i];
         }
     }
 
-    if (out_file) fclose(out_file);
+    // Second pass: process targets
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] == '-') {
+            if (strcmp(argv[i], "-p") == 0 && log_filename == argv[i+1]) i++; // Skip the filename arg
+            continue;
+        }
+
+        char target[MAX_BUFFER];
+        strncpy(target, argv[i], MAX_BUFFER - 1);
+        
+        char *filter = NULL;
+        int filter_type = 0; // 0=none, 1=index (:), 2=name (::)
+
+        char *sep = strstr(target, "::");
+        if (sep) {
+            filter_type = 2;
+            *sep = '\0';
+            filter = sep + 2;
+        } else {
+            sep = strchr(target, ':');
+            if (sep) {
+                filter_type = 1;
+                *sep = '\0';
+                filter = sep + 1;
+            }
+        }
+
+        // Auto-log name if -p was used without filename and this is a file
+        if (log_flag_idx != -1 && log_filename == NULL && !strchr(target, '{')) {
+            static char auto_log[256];
+            strncpy(auto_log, target, 250);
+            char *dot = strrchr(auto_log, '.');
+            if (dot) *dot = '\0';
+            strcat(auto_log, ".txt");
+            log_file = fopen(auto_log, "w");
+        } else if (log_filename && log_file == NULL) {
+            log_file = fopen(log_filename, "w");
+        }
+
+        process_source(target, filter, filter_type);
+    }
+
+    if (log_file) fclose(log_file);
     return 0;
 }
