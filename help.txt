@@ -1,16 +1,16 @@
 DSConv - C Data Structure Converter
-Usage: DSConv.exe [flags] target[:filter] [target[:filter] ...]
+Usage: DSConv.exe [flags] [-p [file.txt]] target[:filter] [target[:filter] ...]
 
 TARGETS:
   A target can be a filename or a raw C-style string.
   Strings must be wrapped in double quotes (" ").
-  
-  <file.c>          Processes all structures found in the file.
+
+  file.c            Processes all structures found in the file.
   "int x[2]={0};"   Processes the provided code string.
 
 FILTERS:
   Filters are appended to targets to select specific data structures.
-  
+
   :index            Selects the Nth structure in that source (1-based).
                     Example: data.c:2 (Gets the second struct in the file).
   ::identifier      Selects a structure by its variable name.
@@ -18,12 +18,14 @@ FILTERS:
 
 FLAGS:
   -p [file.txt]     Print-to-file. Logs console output to a file.
-                    If no filename is provided for a file target, it 
-                    defaults to <filename>.txt.
+                    If no filename is provided for a file target, it
+                    defaults to file.txt.
                     Example: DSConv.exe main.c -p (Creates main.txt)
 
-  -s                Silent Mode. Suppresses all console output. 
+  -s                Silent Mode. Suppresses all console output.
                     Best used with -p to generate logs in the background.
+
+  -?                Show this help manual.
 
 COMBINATIONS & EXAMPLES:
 
