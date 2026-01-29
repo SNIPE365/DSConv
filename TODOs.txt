@@ -1,6 +1,5 @@
 - allow more data types , including ones that contain spaces such as long long, and static unsigned long long int
 - make the interactive mode flag (-i) which lets the user type multi line C code.
-- make it actually convert arrays to structs (obvioustly)
 - make it work with multi line formatted data structures as well as the \ operator rather than code packed onto a single line.
 - make the input data structures also support structs, and output arrays, so far the utility only prints information about the data stucture
 - make the tool have formatting options for different C coding styles
@@ -10,3 +9,4 @@
   address literals, and GNU statement expressions.
 - test other architectures to ensure that the right arch name is being printed, but also test to make sure the short long and long long modifiers are printing the
   correct sizes and ranges respective of architectre.
+
